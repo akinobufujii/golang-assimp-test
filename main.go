@@ -5,13 +5,14 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/andrebq/assimp"
 	"github.com/andrebq/assimp/conv"
 	"github.com/go-gl/gl/all-core/gl"
 	"github.com/go-gl/glfw/v3.1/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
-// 頂点フォーマット
+// VertexFormat 頂点フォーマット
 type VertexFormat struct {
 	pos   mgl32.Vec3
 	color mgl32.Vec4
@@ -52,19 +53,26 @@ void main() {
 
 // MeshVertexFormat メッシュ用頂点フォーマット
 type MeshVertexFormat struct {
-	mPos    mgl32.Vec3
-	mUV     mgl32.Vec2
-	mNormal mgl32.Vec3
-	mColor  mgl32.Vec4
+	mPos    assimp.Vector3 // 位置
+	mUV     assimp.Vector2 // UV座標
+	mNormal assimp.Vector3 // 法線
+	mColor  assimp.Vector4 // 色
 }
 
 // MeshData メッシュデータ構造体
 type MeshData struct {
-	mVertexData []MeshVertexFormat // 頂点データ
-	mIndices    []int32            // インデックスデータ
+	mVertexData  []MeshVertexFormat // 頂点データ
+	mIndices     []int              // インデックスデータ
+	mTextureName string             // テクスチャ名
 }
 
-func (v *MeshData) LoadMeshData(path string) {
+// Model モデル構造体
+type Model struct {
+	mMeshDataList []MeshData // メッシュデータリスト
+}
+
+// LoadModel モデルデータ読み込み
+func (model *Model) LoadModel(path string) {
 	// シーン読み込み
 	scene, err := conv.LoadAsset(path)
 	if err != nil {
@@ -72,7 +80,25 @@ func (v *MeshData) LoadMeshData(path string) {
 		panic(err)
 	}
 
-	mesh := scene.IndexOfMesh(0)
+	model.mMeshDataList = make([]MeshData, len(scene.Mesh))
+	for i, meshData := range scene.Mesh {
+
+		// 頂点情報を格納
+		model.mMeshDataList[i].mVertexData = make([]MeshVertexFormat, len(meshData.Vertices))
+		for j := range meshData.Vertices {
+			model.mMeshDataList[i].mVertexData[j].mPos = meshData.Vertices[j]
+			model.mMeshDataList[i].mVertexData[j].mUV = meshData.UVCoords[j]
+			//model.mMeshDataList[i].mVertexData[j].mColor = meshData.Colors[j]
+		}
+
+		// 添字情報を格納
+		model.mMeshDataList[i].mIndices = make([]int, len(meshData.Faces))
+		for j, face := range meshData.Faces {
+			for _, index := range face.Indices {
+				model.mMeshDataList[i].mIndices[j] = index
+			}
+		}
+	}
 
 	fmt.Printf("%v", scene)
 }
@@ -122,23 +148,16 @@ func main() {
 	gl.UseProgram(program)
 	gl.BindFragDataLocation(program, 0, gl.Str("fc\x00"))
 
-	// シーン読み込み
-	scene, err := conv.LoadAsset("Cerberus_by_Andrew_Maximov/Cerberus_LP.FBX")
-	if err != nil {
-		fmt.Printf("Unable to load scene.\nCause: %v", err)
-	}
-
-	fmt.Printf("%v", scene)
-	// else {
-	//	dumpScene(scene, *_of)
-	//}
+	// モデルデータ読み込み
+	sampleModel := new(Model)
+	sampleModel.LoadModel("Cerberus_by_Andrew_Maximov/Cerberus_LP.FBX")
 
 	// 頂点情報作成
-	// var vao uint32
-	// gl.GenVertexArrays(1, &vao)
-	// gl.BindVertexArray(vao)
+	var vao uint32
+	gl.GenVertexArrays(1, &vao)
+	gl.BindVertexArray(vao)
 
-	// defer gl.BindVertexArray(0)
+	defer gl.BindVertexArray(0)
 
 	// var vbo uint32
 	// gl.GenBuffers(1, &vbo)
@@ -206,7 +225,7 @@ func main() {
 	}
 }
 
-// シェーダープログラム作成関数
+// CreateShaderProgram シェーダープログラム作成関数
 // 第1戻り値　プログラムインスタンス番号
 // 第2戻り値　エラー内容
 func CreateShaderProgram(vertexShaderSource, fragmentShaderSource string) (uint32, error) {
