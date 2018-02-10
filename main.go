@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+	"unsafe"
 
 	"github.com/andrebq/assimp"
 	"github.com/andrebq/assimp/conv"
@@ -11,15 +12,6 @@ import (
 	"github.com/go-gl/glfw/v3.1/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
-
-// VertexFormat 頂点フォーマット
-type VertexFormat struct {
-	pos   mgl32.Vec3
-	color mgl32.Vec4
-}
-
-var vertexDatas []VertexFormat
-var indexDatas []uint32
 
 // 頂点シェーダプログラム
 var vertexShader = `
@@ -159,25 +151,26 @@ func main() {
 
 	defer gl.BindVertexArray(0)
 
-	// var vbo uint32
-	// gl.GenBuffers(1, &vbo)
-	// gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
-	// dataSize := len(vertexDatas) * int(unsafe.Sizeof(vertexDatas[0]))
-	// gl.BufferData(gl.ARRAY_BUFFER, dataSize, gl.Ptr(vertexDatas), gl.STATIC_DRAW)
+	var vbo uint32
+	gl.GenBuffers(1, &vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 
-	// var ibo uint32
-	// gl.GenBuffers(1, &ibo)
-	// gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
-	// dataSize = len(indexDatas) * int(unsafe.Sizeof(indexDatas[0]))
-	// gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, dataSize, gl.Ptr(indexDatas), gl.STATIC_DRAW)
+	dataSize := len(sampleModel.mMeshDataList[0].mVertexData) * int(unsafe.Sizeof(sampleModel.mMeshDataList[0].mVertexData[0]))
+	gl.BufferData(gl.ARRAY_BUFFER, dataSize, gl.Ptr(sampleModel.mMeshDataList[0].mVertexData), gl.STATIC_DRAW)
 
-	// vertAttrib := uint32(gl.GetAttribLocation(program, gl.Str("pv\x00")))
-	// gl.EnableVertexAttribArray(vertAttrib)
-	// gl.VertexAttribPointer(vertAttrib, 3, gl.FLOAT, false, 4*7, gl.PtrOffset(0))
+	var ibo uint32
+	gl.GenBuffers(1, &ibo)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
+	dataSize = len(sampleModel.mMeshDataList[0].mIndices) * int(unsafe.Sizeof(sampleModel.mMeshDataList[0].mIndices[0]))
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, dataSize, gl.Ptr(sampleModel.mMeshDataList[0].mIndices), gl.STATIC_DRAW)
 
-	// vertAttrib = uint32(gl.GetAttribLocation(program, gl.Str("in_vertexColor\x00")))
-	// gl.EnableVertexAttribArray(vertAttrib)
-	// gl.VertexAttribPointer(vertAttrib, 4, gl.FLOAT, false, 4*7, gl.PtrOffset(3*4))
+	vertAttrib := uint32(gl.GetAttribLocation(program, gl.Str("pv\x00")))
+	gl.EnableVertexAttribArray(vertAttrib)
+	gl.VertexAttribPointer(vertAttrib, 3, gl.FLOAT, false, 4*7, gl.PtrOffset(0))
+
+	vertAttrib = uint32(gl.GetAttribLocation(program, gl.Str("in_vertexColor\x00")))
+	gl.EnableVertexAttribArray(vertAttrib)
+	gl.VertexAttribPointer(vertAttrib, 4, gl.FLOAT, false, 4*7, gl.PtrOffset(3*4))
 
 	// 基本設定
 	gl.Enable(gl.DEPTH_TEST)
@@ -215,10 +208,10 @@ func main() {
 		gl.UniformMatrix4fv(modelUniform, 1, false, &model[0])
 
 		// バッファをバインド
-		// gl.BindVertexArray(vao)
+		gl.BindVertexArray(vao)
 
 		// 描画
-		gl.DrawElements(gl.TRIANGLES, int32(len(vertexDatas)), gl.UNSIGNED_INT, gl.PtrOffset(0))
+		gl.DrawElements(gl.TRIANGLES, int32(len(sampleModel.mMeshDataList[0].mVertexData)), gl.UNSIGNED_INT, gl.PtrOffset(0))
 
 		window.SwapBuffers()
 		glfw.PollEvents()
