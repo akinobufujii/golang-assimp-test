@@ -6,7 +6,6 @@ import (
 	"strings"
 	"unsafe"
 
-	"github.com/andrebq/assimp"
 	"github.com/andrebq/assimp/conv"
 	"github.com/go-gl/gl/all-core/gl"
 	"github.com/go-gl/glfw/v3.1/glfw"
@@ -45,10 +44,10 @@ void main() {
 
 // MeshVertexFormat メッシュ用頂点フォーマット
 type MeshVertexFormat struct {
-	mPos    assimp.Vector3 // 位置
-	mUV     assimp.Vector2 // UV座標
-	mNormal assimp.Vector3 // 法線
-	mColor  assimp.Vector4 // 色
+	mPos [3]float32 // 位置
+	//	mUV     assimp.Vector2 // UV座標
+	//	mNormal assimp.Vector3 // 法線
+	mColor [4]float32 // 色
 }
 
 // MeshData メッシュデータ構造体
@@ -75,24 +74,78 @@ func (model *Model) LoadModel(path string) {
 	model.mMeshDataList = make([]MeshData, len(scene.Mesh))
 	for i, meshData := range scene.Mesh {
 
+		colorList := [][]float32{
+			{0, 0, 0, 1},
+			{1, 0, 0, 1},
+			{0, 1, 0, 1},
+			{0, 0, 1, 1},
+			{1, 1, 0, 1},
+			{0, 1, 1, 1},
+			{1, 0, 1, 1},
+			{1, 1, 1, 1}}
+
+		colorIndex := 0
+		colorListMax := len(colorList)
+
 		// 頂点情報を格納
+		fmt.Println("vertex")
 		model.mMeshDataList[i].mVertexData = make([]MeshVertexFormat, len(meshData.Vertices))
 		for j := range meshData.Vertices {
-			model.mMeshDataList[i].mVertexData[j].mPos = meshData.Vertices[j]
-			model.mMeshDataList[i].mVertexData[j].mUV = meshData.UVCoords[j]
+			model.mMeshDataList[i].mVertexData[j].mPos[0] = float32(meshData.Vertices[j][0])
+			model.mMeshDataList[i].mVertexData[j].mPos[1] = float32(meshData.Vertices[j][1])
+			model.mMeshDataList[i].mVertexData[j].mPos[2] = float32(meshData.Vertices[j][2])
+			//model.mMeshDataList[i].mVertexData[j].mUV = meshData.UVCoords[j]
 			//model.mMeshDataList[i].mVertexData[j].mColor = meshData.Colors[j]
+			fmt.Printf("%v %v %v\n",
+				model.mMeshDataList[i].mVertexData[j].mPos[0],
+				model.mMeshDataList[i].mVertexData[j].mPos[1],
+				model.mMeshDataList[i].mVertexData[j].mPos[2])
+
+			// 適当な色を突っ込んでおく
+			model.mMeshDataList[i].mVertexData[j].mColor[0] = colorList[colorIndex][0]
+			model.mMeshDataList[i].mVertexData[j].mColor[1] = colorList[colorIndex][1]
+			model.mMeshDataList[i].mVertexData[j].mColor[2] = colorList[colorIndex][2]
+			model.mMeshDataList[i].mVertexData[j].mColor[3] = colorList[colorIndex][3]
+
+			colorIndex++
+			if colorIndex >= colorListMax {
+				colorIndex = 0
+			}
+		}
+
+		fmt.Println("array")
+		for _, data := range model.mMeshDataList[i].mVertexData {
+			fmt.Printf("%v %v %v\n",
+				data.mPos[0],
+				data.mPos[1],
+				data.mPos[2])
 		}
 
 		// 添字情報を格納
-		model.mMeshDataList[i].mIndices = make([]int, len(meshData.Faces))
-		for j, face := range meshData.Faces {
+		fmt.Println("index")
+		count := 0
+		model.mMeshDataList[i].mIndices = make([]int, len(meshData.Faces)*3)
+		for _, face := range meshData.Faces {
 			for _, index := range face.Indices {
-				model.mMeshDataList[i].mIndices[j] = index
+				model.mMeshDataList[i].mIndices[count] = index
+				fmt.Printf("%v ", model.mMeshDataList[i].mIndices[count])
+				count++
+			}
+			fmt.Println("")
+		}
+
+		fmt.Println("array")
+		count = 0
+		for _, index := range model.mMeshDataList[i].mIndices {
+			fmt.Printf("%v ", index)
+
+			count++
+			if count >= 3 {
+				count = 0
+				fmt.Println("")
 			}
 		}
 	}
-
-	fmt.Printf("%v", scene)
 }
 
 // 初期化関数
@@ -142,7 +195,7 @@ func main() {
 
 	// モデルデータ読み込み
 	sampleModel := new(Model)
-	sampleModel.LoadModel("Cerberus_by_Andrew_Maximov/Cerberus_LP.FBX")
+	sampleModel.LoadModel("models/box_win_convert.obj")
 
 	// 頂点情報作成
 	var vao uint32
@@ -156,6 +209,7 @@ func main() {
 	gl.BindBuffer(gl.ARRAY_BUFFER, vbo)
 
 	dataSize := len(sampleModel.mMeshDataList[0].mVertexData) * int(unsafe.Sizeof(sampleModel.mMeshDataList[0].mVertexData[0]))
+	fmt.Printf("dataSize = %v\n", dataSize)
 	gl.BufferData(gl.ARRAY_BUFFER, dataSize, gl.Ptr(sampleModel.mMeshDataList[0].mVertexData), gl.STATIC_DRAW)
 
 	var ibo uint32
@@ -174,8 +228,6 @@ func main() {
 
 	// 基本設定
 	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthFunc(gl.LESS)
-	gl.ClearColor(0.0, 0.0, 1.0, 1.0)
 
 	angle := 0.0
 	previousTime := glfw.GetTime()
@@ -185,6 +237,8 @@ func main() {
 
 		// 画面クリア
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+		gl.ClearColor(0.0, 0.0, 1.0, 1.0)
+		gl.ClearDepth(1.0)
 
 		// 使用するシェーダを洗濯
 		gl.UseProgram(program)
@@ -209,9 +263,12 @@ func main() {
 
 		// バッファをバインド
 		gl.BindVertexArray(vao)
+		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
 
 		// 描画
-		gl.DrawElements(gl.TRIANGLES, int32(len(sampleModel.mMeshDataList[0].mVertexData)), gl.UNSIGNED_INT, gl.PtrOffset(0))
+		//fmt.Printf("%v", int32(len(sampleModel.mMeshDataList[0].mIndices)))
+		//fmt.Println("")
+		gl.DrawElements(gl.TRIANGLES, int32(len(sampleModel.mMeshDataList[0].mIndices)), gl.UNSIGNED_INT, gl.PtrOffset(0))
 
 		window.SwapBuffers()
 		glfw.PollEvents()
@@ -261,7 +318,7 @@ func CreateShaderProgram(vertexShaderSource, fragmentShaderSource string) (uint3
 	return program, nil
 }
 
-// シェーダコンパイル
+// CompileShader シェーダコンパイル
 func CompileShader(source string, shaderType uint32) (uint32, error) {
 	shader := gl.CreateShader(shaderType)
 
