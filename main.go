@@ -20,12 +20,12 @@ uniform mat4 projection;
 uniform mat4 camera;
 uniform mat4 model;
 
-in vec3 pv;
+in vec3 in_position;
 in vec4 in_vertexColor;
 out vec4 out_vertexColor;
 
 void main() {
-	gl_Position = projection * camera * model * vec4(pv, 1);
+	gl_Position = projection * camera * model * vec4(in_position, 1);
 	out_vertexColor = in_vertexColor;
 }
 ` + "\x00"
@@ -35,10 +35,10 @@ var fragmentShader = `
 #version 410
 
 in vec4 out_vertexColor;
-out vec4 fc;
+out vec4 out_color;
 
 void main() {
-	fc = out_vertexColor;
+	out_color = out_vertexColor;
 }
 ` + "\x00"
 
@@ -191,7 +191,7 @@ func main() {
 		panic(err)
 	}
 	gl.UseProgram(program)
-	gl.BindFragDataLocation(program, 0, gl.Str("fc\x00"))
+	gl.BindFragDataLocation(program, 0, gl.Str("out_color\x00"))
 
 	// モデルデータ読み込み
 	sampleModel := new(Model)
@@ -218,7 +218,7 @@ func main() {
 	dataSize = len(sampleModel.mMeshDataList[0].mIndices) * int(unsafe.Sizeof(sampleModel.mMeshDataList[0].mIndices[0]))
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, dataSize, gl.Ptr(sampleModel.mMeshDataList[0].mIndices), gl.STATIC_DRAW)
 
-	vertAttrib := uint32(gl.GetAttribLocation(program, gl.Str("pv\x00")))
+	vertAttrib := uint32(gl.GetAttribLocation(program, gl.Str("in_position\x00")))
 	gl.EnableVertexAttribArray(vertAttrib)
 	gl.VertexAttribPointer(vertAttrib, 3, gl.FLOAT, false, 4*7, gl.PtrOffset(0))
 
