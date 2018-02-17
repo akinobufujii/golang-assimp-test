@@ -53,7 +53,7 @@ type MeshVertexFormat struct {
 // MeshData メッシュデータ構造体
 type MeshData struct {
 	mVertexData  []MeshVertexFormat // 頂点データ
-	mIndices     []int              // インデックスデータ
+	mIndices     []uint32           // インデックスデータ
 	mTextureName string             // テクスチャ名
 }
 
@@ -124,10 +124,10 @@ func (model *Model) LoadModel(path string) {
 		// 添字情報を格納
 		fmt.Println("index")
 		count := 0
-		model.mMeshDataList[i].mIndices = make([]int, len(meshData.Faces)*3)
+		model.mMeshDataList[i].mIndices = make([]uint32, len(meshData.Faces)*3)
 		for _, face := range meshData.Faces {
 			for _, index := range face.Indices {
-				model.mMeshDataList[i].mIndices[count] = index
+				model.mMeshDataList[i].mIndices[count] = uint32(index)
 				fmt.Printf("%v ", model.mMeshDataList[i].mIndices[count])
 				count++
 			}
@@ -244,11 +244,11 @@ func main() {
 		gl.UseProgram(program)
 
 		// 各行列設定
-		projection := mgl32.Perspective(mgl32.DegToRad(45.0), float32(1280)/960, 1.0, 10000.0)
+		projection := mgl32.Perspective(mgl32.DegToRad(45.0), float32(1280)/float32(960), 1.0, 10000.0)
 		projectionUniform := gl.GetUniformLocation(program, gl.Str("projection\x00"))
 		gl.UniformMatrix4fv(projectionUniform, 1, false, &projection[0])
 
-		camera := mgl32.LookAtV(mgl32.Vec3{0, 10, 10}, mgl32.Vec3{0, 3, 0}, mgl32.Vec3{0, 1, 0})
+		camera := mgl32.LookAtV(mgl32.Vec3{0, 0, 10}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{0, 1, 0})
 		cameraUniform := gl.GetUniformLocation(program, gl.Str("camera\x00"))
 		gl.UniformMatrix4fv(cameraUniform, 1, false, &camera[0])
 
@@ -266,8 +266,6 @@ func main() {
 		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo)
 
 		// 描画
-		//fmt.Printf("%v", int32(len(sampleModel.mMeshDataList[0].mIndices)))
-		//fmt.Println("")
 		gl.DrawElements(gl.TRIANGLES, int32(len(sampleModel.mMeshDataList[0].mIndices)), gl.UNSIGNED_INT, gl.PtrOffset(0))
 
 		window.SwapBuffers()
