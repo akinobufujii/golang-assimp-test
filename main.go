@@ -195,7 +195,7 @@ func main() {
 
 	// モデルデータ読み込み
 	sampleModel := new(Model)
-	sampleModel.LoadModel("models/box_win_convert.obj")
+	sampleModel.LoadModel("models/gun.obj")
 
 	// 頂点情報作成
 	var vao uint32
@@ -248,7 +248,7 @@ func main() {
 		projectionUniform := gl.GetUniformLocation(program, gl.Str("projection\x00"))
 		gl.UniformMatrix4fv(projectionUniform, 1, false, &projection[0])
 
-		camera := mgl32.LookAtV(mgl32.Vec3{0, 0, 10}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{0, 1, 0})
+		camera := mgl32.LookAtV(mgl32.Vec3{0, 0, 2}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{0, 1, 0})
 		cameraUniform := gl.GetUniformLocation(program, gl.Str("camera\x00"))
 		gl.UniformMatrix4fv(cameraUniform, 1, false, &camera[0])
 
